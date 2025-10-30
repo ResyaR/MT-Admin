@@ -714,6 +714,133 @@ export class AdminAPI {
       return [];
     }
   }
+
+  // ==================== DELIVERY SERVICES (ADMIN) ====================
+  
+  // Get all delivery services
+  static async getAllDeliveryServices(filters?: { type?: string; status?: string }) {
+    try {
+      const adminKey = localStorage.getItem('admin_key') || ADMIN_KEY;
+      const params = new URLSearchParams();
+      if (filters?.type) params.append('type', filters.type);
+      if (filters?.status) params.append('status', filters.status);
+      
+      const url = `${API_BASE_URL}/admin/deliveries${params.toString() ? `?${params.toString()}` : ''}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'admin-key': adminKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch delivery services');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching delivery services:', error);
+      throw error;
+    }
+  }
+
+  // Get single delivery service detail
+  static async getDeliveryServiceDetail(id: number) {
+    try {
+      const adminKey = localStorage.getItem('admin_key') || ADMIN_KEY;
+      const response = await fetch(`${API_BASE_URL}/admin/deliveries/${id}`, {
+        method: 'GET',
+        headers: {
+          'admin-key': adminKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch delivery service detail');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching delivery service detail:', error);
+      throw error;
+    }
+  }
+
+  // Update delivery status (Admin - for delivery services)
+  static async updateDeliveryServiceStatus(id: number, status: string) {
+    try {
+      const adminKey = localStorage.getItem('admin_key') || ADMIN_KEY;
+      const response = await fetch(`${API_BASE_URL}/admin/deliveries/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'admin-key': adminKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update delivery status');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating delivery status:', error);
+      throw error;
+    }
+  }
+
+  // Assign driver to delivery (Admin - for delivery services)
+  static async assignDriverToDeliveryService(id: number, driverId: number) {
+    try {
+      const adminKey = localStorage.getItem('admin_key') || ADMIN_KEY;
+      const response = await fetch(`${API_BASE_URL}/admin/deliveries/${id}/assign-driver`, {
+        method: 'PUT',
+        headers: {
+          'admin-key': adminKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ driverId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to assign driver');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error assigning driver:', error);
+      throw error;
+    }
+  }
+
+  // Get delivery statistics
+  static async getDeliveryStats() {
+    try {
+      const adminKey = localStorage.getItem('admin_key') || ADMIN_KEY;
+      const response = await fetch(`${API_BASE_URL}/admin/deliveries/stats`, {
+        method: 'GET',
+        headers: {
+          'admin-key': adminKey,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch delivery stats');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching delivery stats:', error);
+      throw error;
+    }
+  }
 }
 
 export default AdminAPI;

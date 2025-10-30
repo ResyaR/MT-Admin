@@ -4,33 +4,29 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import RestaurantAPI from "@/lib/restaurantApi";
 import ImageUploadField from "./ImageUploadField";
-import { uploadRestaurantImage } from "@/lib/uploadHelpers";
-import { testSupabaseConnection } from "@/lib/supabase";
+import { uploadMenuImage } from "@/lib/uploadHelpers";
 
-export default function RestaurantsTable() {
+export default function MenuTable({ restaurantId }) {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [restaurants, setRestaurants] = useState([]);
+  const [menus, setMenus] = useState([]);
+  const [restaurant, setRestaurant] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [selectedMenu, setSelectedMenu] = useState(null);
   
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
+    price: "",
     image: "",
     category: "",
-    address: "",
-    phone: "",
-    openingTime: "",
-    closingTime: "",
-      status: "active",
+    availability: true,
   });
 
   // Image upload state
@@ -44,19 +40,21 @@ export default function RestaurantsTable() {
   const [notificationType, setNotificationType] = useState("success");
 
   useEffect(() => {
-    loadRestaurants();
-    // Test Supabase connection on mount
-    testSupabaseConnection();
-  }, []);
+    loadData();
+  }, [restaurantId]);
 
-  const loadRestaurants = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
-      const data = await RestaurantAPI.getAllRestaurants();
-      setRestaurants(data);
+      const [restaurantData, menusData] = await Promise.all([
+        RestaurantAPI.getRestaurant(restaurantId),
+        RestaurantAPI.getMenusByRestaurant(restaurantId),
+      ]);
+      setRestaurant(restaurantData);
+      setMenus(menusData);
     } catch (error) {
-      console.error('Error loading restaurants:', error);
-      showNotif('Gagal memuat data restaurant', 'error');
+      console.error('Error loading data:', error);
+      showNotif('Gagal memuat data', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -73,45 +71,42 @@ export default function RestaurantsTable() {
     setFormData({
       name: "",
       description: "",
+      price: "",
       image: "",
       category: "",
-      address: "",
-      phone: "",
-      openingTime: "",
-      closingTime: "",
-      status: "active",
+      availability: true,
     });
     setSelectedImageFile(null);
     setIsImageDeleted(false);
     setShowAddModal(true);
   };
 
-  const handleEditClick = (restaurant) => {
-    setSelectedRestaurant(restaurant);
+  const handleEditClick = (menu) => {
+    setSelectedMenu(menu);
     setFormData({
-      name: restaurant.name || "",
-      description: restaurant.description || "",
-      image: restaurant.image || "",
-      category: restaurant.category || "",
-      address: restaurant.address || "",
-      phone: restaurant.phone || "",
-      openingTime: restaurant.openingTime || "",
-      closingTime: restaurant.closingTime || "",
-      status: restaurant.status || "active",
+      name: menu.name || "",
+      description: menu.description || "",
+      price: menu.price || "",
+      image: menu.image || "",
+      category: menu.category || "",
+      availability: menu.availability !== undefined ? menu.availability : true,
     });
     setSelectedImageFile(null);
     setIsImageDeleted(false);
     setShowEditModal(true);
   };
 
-  const handleDeleteClick = (restaurant) => {
-    setSelectedRestaurant(restaurant);
+  const handleDeleteClick = (menu) => {
+    setSelectedMenu(menu);
     setShowDeleteModal(true);
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const handleSubmitAdd = async (e) => {
@@ -122,8 +117,7 @@ export default function RestaurantsTable() {
 
       // Upload image to Supabase if file is selected
       if (selectedImageFile) {
-        const tempId = `temp-${Date.now()}`;
-        const uploadResult = await uploadRestaurantImage(selectedImageFile, tempId);
+        const uploadResult = await uploadMenuImage(selectedImageFile, `temp-${Date.now()}`);
         
         if (!uploadResult.success) {
           showNotif(uploadResult.error || 'Gagal upload gambar', 'error');
@@ -134,19 +128,22 @@ export default function RestaurantsTable() {
         imageUrl = uploadResult.url;
       }
 
-      // Save to backend with image URL
-      await RestaurantAPI.createRestaurant({
-        ...formData,
+      await RestaurantAPI.createMenu({
+        restaurantId,
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
         image: imageUrl,
+        category: formData.category,
+        availability: formData.availability,
       });
-      
-      showNotif('Restaurant berhasil ditambahkan');
+      showNotif('Menu berhasil ditambahkan');
       setShowAddModal(false);
       setSelectedImageFile(null);
-      loadRestaurants();
+      loadData();
     } catch (error) {
-      console.error('Error adding restaurant:', error);
-      showNotif('Gagal menambahkan restaurant', 'error');
+      console.error('Error adding menu:', error);
+      showNotif('Gagal menambahkan menu', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -165,7 +162,7 @@ export default function RestaurantsTable() {
       }
       // Upload new image to Supabase if file is selected
       else if (selectedImageFile) {
-        const uploadResult = await uploadRestaurantImage(selectedImageFile, selectedRestaurant.id.toString());
+        const uploadResult = await uploadMenuImage(selectedImageFile, selectedMenu.id.toString());
         
         if (!uploadResult.success) {
           showNotif(uploadResult.error || 'Gagal upload gambar', 'error');
@@ -176,20 +173,22 @@ export default function RestaurantsTable() {
         imageUrl = uploadResult.url;
       }
 
-      // Update backend with new data
-      await RestaurantAPI.updateRestaurant(selectedRestaurant.id, {
-        ...formData,
+      await RestaurantAPI.updateMenu(selectedMenu.id, {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
         image: imageUrl,
+        category: formData.category,
+        availability: formData.availability,
       });
-      
-      showNotif('Restaurant berhasil diupdate');
+      showNotif('Menu berhasil diupdate');
       setShowEditModal(false);
       setSelectedImageFile(null);
       setIsImageDeleted(false);
-      loadRestaurants();
+      loadData();
     } catch (error) {
-      console.error('Error updating restaurant:', error);
-      showNotif('Gagal mengupdate restaurant', 'error');
+      console.error('Error updating menu:', error);
+      showNotif('Gagal mengupdate menu', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -197,35 +196,29 @@ export default function RestaurantsTable() {
 
   const handleConfirmDelete = async () => {
     try {
-      await RestaurantAPI.deleteRestaurant(selectedRestaurant.id);
-      showNotif('Restaurant berhasil dihapus');
+      await RestaurantAPI.deleteMenu(selectedMenu.id);
+      showNotif('Menu berhasil dihapus');
       setShowDeleteModal(false);
-      loadRestaurants();
+      loadData();
     } catch (error) {
-      showNotif('Gagal menghapus restaurant', 'error');
+      showNotif('Gagal menghapus menu', 'error');
     }
   };
 
-  const handleManageMenu = (restaurantId) => {
-    router.push(`/restaurants/${restaurantId}/menus`);
+  const handleToggleAvailability = async (menuId, currentAvailability) => {
+    try {
+      await RestaurantAPI.updateMenuAvailability(menuId, !currentAvailability);
+      showNotif('Status availability diupdate');
+      loadData();
+    } catch (error) {
+      showNotif('Gagal mengupdate availability', 'error');
+    }
   };
 
-  const filteredRestaurants = restaurants.filter(restaurant => {
-    const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || restaurant.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const getStatusBadge = (status) => {
-    return (
-      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-        status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-      }`}>
-        {status === "active" ? "Active" : "Inactive"}
-      </span>
-    );
-  };
+  const filteredMenus = menus.filter(menu => 
+    menu.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    menu.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="bg-white rounded-lg shadow-sm">
@@ -238,8 +231,24 @@ export default function RestaurantsTable() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Header */}
       <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            onClick={() => router.push('/restaurants')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {restaurant ? `Menu ${restaurant.name}` : 'Menu Management'}
+            </h1>
+            <p className="text-gray-600 mt-1">Kelola menu items untuk restaurant ini</p>
+          </div>
+        </div>
+
+        {/* Search & Add Button */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -248,28 +257,19 @@ export default function RestaurantsTable() {
               </span>
               <input
                 type="text"
-                placeholder="Cari restaurant..."
+                placeholder="Cari menu..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000] focus:border-transparent"
               />
             </div>
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
           <button 
             onClick={handleAddClick}
             className="px-4 py-2 bg-[#E00000] text-white rounded-lg hover:bg-[#B70000] transition-colors flex items-center gap-2"
           >
             <span className="material-symbols-outlined">add</span>
-            Tambah Restaurant
+            Tambah Menu
           </button>
         </div>
       </div>
@@ -278,72 +278,105 @@ export default function RestaurantsTable() {
       {isLoading && (
         <div className="p-12 text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E00000] mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading restaurants...</p>
+          <p className="text-gray-600">Loading menus...</p>
         </div>
       )}
 
-      {/* Grid View */}
+      {/* Menu Table */}
       {!isLoading && (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-        {filteredRestaurants.map((restaurant) => (
-          <div key={restaurant.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-            <img
-                src={restaurant.image || '/placeholder.jpg'}
-              alt={restaurant.name}
-              className="w-full h-48 object-cover"
-                onError={(e) => { e.target.src = '/placeholder.jpg'; }}
-            />
-            <div className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="text-lg font-bold text-gray-900">{restaurant.name}</h3>
-                {getStatusBadge(restaurant.status)}
-              </div>
-              <p className="text-sm text-gray-600 mb-3">{restaurant.category}</p>
-              
-              <div className="flex items-center gap-2 mb-3">
-                <span className="material-symbols-outlined text-yellow-500 text-sm">star</span>
-                <span className="text-sm font-semibold text-gray-900">{restaurant.rating}</span>
-                <span className="text-sm text-gray-500">({restaurant.totalOrders} orders)</span>
-              </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Menu</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Kategori</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Harga</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredMenus.map((menu) => (
+                <tr key={menu.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={menu.image || '/placeholder.jpg'}
+                        alt={menu.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                        onError={(e) => { e.target.src = '/placeholder.jpg'; }}
+                      />
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">{menu.name}</div>
+                        <div className="text-xs text-gray-500">{menu.description}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                      {menu.category}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-semibold text-gray-900">
+                      Rp {parseInt(menu.price).toLocaleString('id-ID')}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => handleToggleAvailability(menu.id, menu.availability)}
+                      className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        menu.availability 
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      } transition-colors`}
+                    >
+                      {menu.availability ? 'Tersedia' : 'Habis'}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={() => handleEditClick(menu)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <span className="material-symbols-outlined text-lg">edit</span>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteClick(menu)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-              <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => handleManageMenu(restaurant.id)}
-                    className="flex-1 px-3 py-2 border border-[#E00000] text-[#E00000] rounded-lg text-sm font-medium hover:bg-[#E00000] hover:text-white transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-lg">restaurant_menu</span>
-                    Menu
-                </button>
-                  <button 
-                    onClick={() => handleEditClick(restaurant)}
-                    className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
-                  >
-                  <span className="material-symbols-outlined text-lg">edit</span>
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteClick(restaurant)}
-                    className="px-3 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-lg">delete</span>
-                </button>
-              </div>
+          {filteredMenus.length === 0 && (
+            <div className="text-center py-12">
+              <span className="material-symbols-outlined text-6xl text-gray-300">restaurant_menu</span>
+              <p className="text-gray-500 mt-4">Belum ada menu</p>
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </div>
       )}
 
-      {/* Add Restaurant Modal */}
+      {/* Add Menu Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Tambah Restaurant</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Tambah Menu</h2>
             </div>
             <form onSubmit={handleSubmitAdd} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Restaurant *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Menu *</label>
                   <input
                     type="text"
                     name="name"
@@ -361,7 +394,7 @@ export default function RestaurantsTable() {
                     value={formData.category}
                     onChange={handleInputChange}
                     required
-                    placeholder="e.g. Noodles, Cafe, Indonesian"
+                    placeholder="e.g. Main Course, Beverages"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
                   />
                 </div>
@@ -378,69 +411,38 @@ export default function RestaurantsTable() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga (Rp) *</label>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  required
+                  min="0"
+                  step="100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
+                />
+              </div>
+
               <ImageUploadField
-                label="Gambar Restaurant"
+                label="Gambar Menu"
                 currentImage={formData.image}
                 onImageChange={(file) => setSelectedImageFile(file)}
                 maxSize={5}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+              <div>
+                <label className="flex items-center gap-2">
                   <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
+                    type="checkbox"
+                    name="availability"
+                    checked={formData.availability}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
+                    className="w-4 h-4 text-[#E00000] rounded focus:ring-[#E00000]"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Telepon</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Buka</label>
-                  <input
-                    type="time"
-                    name="openingTime"
-                    value={formData.openingTime}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Tutup</label>
-                  <input
-                    type="time"
-                    name="closingTime"
-                    value={formData.closingTime}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
+                  <span className="text-sm font-medium text-gray-700">Menu tersedia</span>
+                </label>
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
@@ -456,7 +458,7 @@ export default function RestaurantsTable() {
                   disabled={isUploading}
                   className="px-4 py-2 bg-[#E00000] text-white rounded-lg hover:bg-[#B70000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUploading ? 'Mengupload...' : 'Tambah Restaurant'}
+                  {isUploading ? 'Mengupload...' : 'Tambah Menu'}
                 </button>
               </div>
             </form>
@@ -464,17 +466,17 @@ export default function RestaurantsTable() {
         </div>
       )}
 
-      {/* Edit Restaurant Modal */}
+      {/* Edit Menu Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Edit Restaurant</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Edit Menu</h2>
             </div>
             <form onSubmit={handleSubmitEdit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Restaurant *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Menu *</label>
                   <input
                     type="text"
                     name="name"
@@ -508,8 +510,22 @@ export default function RestaurantsTable() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga (Rp) *</label>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  required
+                  min="0"
+                  step="100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
+                />
+              </div>
+
               <ImageUploadField
-                label="Gambar Restaurant"
+                label="Gambar Menu"
                 currentImage={formData.image}
                 onImageChange={(file) => {
                   setSelectedImageFile(file);
@@ -526,62 +542,17 @@ export default function RestaurantsTable() {
                 maxSize={5}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+              <div>
+                <label className="flex items-center gap-2">
                   <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
+                    type="checkbox"
+                    name="availability"
+                    checked={formData.availability}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
+                    className="w-4 h-4 text-[#E00000] rounded focus:ring-[#E00000]"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Telepon</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Buka</label>
-                  <input
-                    type="time"
-                    name="openingTime"
-                    value={formData.openingTime}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Tutup</label>
-                  <input
-                    type="time"
-                    name="closingTime"
-                    value={formData.closingTime}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
+                  <span className="text-sm font-medium text-gray-700">Menu tersedia</span>
+                </label>
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
@@ -606,7 +577,7 @@ export default function RestaurantsTable() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && selectedRestaurant && (
+      {showDeleteModal && selectedMenu && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex items-center gap-4 mb-4">
@@ -614,12 +585,12 @@ export default function RestaurantsTable() {
                 <span className="material-symbols-outlined text-red-600">warning</span>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Hapus Restaurant</h3>
+                <h3 className="text-lg font-bold text-gray-900">Hapus Menu</h3>
                 <p className="text-sm text-gray-600">Tindakan ini tidak bisa dibatalkan</p>
               </div>
             </div>
             <p className="text-gray-700 mb-6">
-              Apakah Anda yakin ingin menghapus restaurant <strong>{selectedRestaurant.name}</strong>?
+              Apakah Anda yakin ingin menghapus menu <strong>{selectedMenu.name}</strong>?
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -641,3 +612,4 @@ export default function RestaurantsTable() {
     </div>
   );
 }
+
