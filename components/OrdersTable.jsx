@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import AdminAPI from "@/lib/adminApi";
+import RestaurantAPI from "@/lib/restaurantApi";
 
 export default function OrdersTable() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -9,6 +10,10 @@ export default function OrdersTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [allOrders, setAllOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [newStatus, setNewStatus] = useState("");
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -18,19 +23,24 @@ export default function OrdersTable() {
   const loadOrders = async () => {
     try {
       setIsLoading(true);
-      const deliveries = await AdminAPI.getAllDeliveries();
+      const foodOrders = await RestaurantAPI.getAllOrders();
       
-      // Transform deliveries to orders format
-      const transformedOrders = deliveries.map(delivery => ({
-        id: `#ORD-2025-${String(delivery.id).padStart(3, '0')}`,
-        customer: `User ${delivery.userId}`,
-        restaurant: delivery.type === "TITIP_BELI" ? "Titip Beli Service" : "Delivery Service",
-        items: delivery.pickupAddress ? `From: ${delivery.pickupAddress.substring(0, 30)}...` : "N/A",
-        amount: "Rp 0",
-        status: delivery.status || "pending",
-        driver: delivery.driverId ? `Driver ${delivery.driverId}` : "-",
-        date: delivery.createdAt ? new Date(delivery.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        time: delivery.createdAt ? new Date(delivery.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "N/A"
+      // Transform food orders
+      const transformedOrders = foodOrders.map(order => ({
+        id: order.id,
+        orderId: `#FOOD-${String(order.id).padStart(4, '0')}`,
+        customer: order.user?.username || order.customerName || `User ${order.userId}`,
+        restaurant: order.restaurant?.name || "Unknown Restaurant",
+        items: order.items?.map(item => `${item.quantity}x ${item.menuName}`).join(', ') || "N/A",
+        itemCount: order.items?.length || 0,
+        amount: `Rp ${Math.round(order.total).toLocaleString('id-ID')}`,
+        rawAmount: order.total,
+        status: order.status || "pending",
+        deliveryAddress: order.deliveryAddress,
+        notes: order.notes,
+        date: order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        time: order.createdAt ? new Date(order.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : "N/A",
+        rawOrder: order
       }));
       
       setAllOrders(transformedOrders);
@@ -41,7 +51,29 @@ export default function OrdersTable() {
     }
   };
 
-  // Old hardcoded data
+  const handleViewOrder = (order) => {
+    setSelectedOrder(order);
+    setShowDetailModal(true);
+  };
+
+  const handleUpdateStatus = (order) => {
+    setSelectedOrder(order);
+    setNewStatus(order.status);
+    setShowStatusModal(true);
+  };
+
+  const handleConfirmStatusUpdate = async () => {
+    try {
+      await RestaurantAPI.updateOrderStatus(selectedOrder.id, newStatus);
+      setShowStatusModal(false);
+      loadOrders();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Gagal mengupdate status');
+    }
+  };
+
+  // Old hardcoded data (not used anymore)
   const oldOrders = [
     {
       id: "#ORD-2025-001",
@@ -134,9 +166,11 @@ export default function OrdersTable() {
   ];
 
   const filteredOrders = allOrders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.restaurant.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = String(order.id).toLowerCase().includes(searchLower) ||
+                         (order.orderId || '').toLowerCase().includes(searchLower) ||
+                         (order.customer || '').toLowerCase().includes(searchLower) ||
+                         (order.restaurant || '').toLowerCase().includes(searchLower);
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -240,9 +274,6 @@ export default function OrdersTable() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Driver
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Date/Time
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -254,7 +285,7 @@ export default function OrdersTable() {
             {displayedOrders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900">{order.id}</div>
+                  <div className="text-sm font-semibold text-gray-900">{order.orderId}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{order.customer}</div>
@@ -263,7 +294,9 @@ export default function OrdersTable() {
                   <div className="text-sm text-gray-900">{order.restaurant}</div>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="text-sm text-gray-600 max-w-xs truncate">{order.items}</div>
+                  <div className="text-sm text-gray-600 max-w-xs truncate" title={order.items}>
+                    {order.itemCount} item(s)
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-semibold text-gray-900">{order.amount}</div>
@@ -272,22 +305,24 @@ export default function OrdersTable() {
                   {getStatusBadge(order.status)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{order.driver}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{order.date}</div>
                   <div className="text-xs text-gray-500">{order.time}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
-                    <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleViewOrder(order)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="View Details"
+                    >
                       <span className="material-symbols-outlined text-lg">visibility</span>
                     </button>
-                    <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => handleUpdateStatus(order)}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                      title="Update Status"
+                    >
                       <span className="material-symbols-outlined text-lg">edit</span>
-                    </button>
-                    <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <span className="material-symbols-outlined text-lg">cancel</span>
                     </button>
                   </div>
                 </td>
@@ -333,6 +368,127 @@ export default function OrdersTable() {
           </button>
         </div>
       </div>
+
+      {/* Order Detail Modal */}
+      {showDetailModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Detail Order {selectedOrder.orderId}</h2>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Customer</p>
+                  <p className="text-base font-semibold">{selectedOrder.customer}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Restaurant</p>
+                  <p className="text-base font-semibold">{selectedOrder.restaurant}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Status</p>
+                  <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-base font-semibold text-[#E00000]">{selectedOrder.amount}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Items</p>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  {selectedOrder.rawOrder?.items?.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-0">
+                      <div>
+                        <p className="font-medium">{item.menuName}</p>
+                        <p className="text-sm text-gray-600">Rp {parseInt(item.price).toLocaleString('id-ID')} x {item.quantity}</p>
+                      </div>
+                      <p className="font-semibold">Rp {parseInt(item.subtotal).toLocaleString('id-ID')}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-600">Alamat Pengantaran</p>
+                <p className="text-base">{selectedOrder.deliveryAddress}</p>
+              </div>
+
+              {selectedOrder.notes && (
+                <div>
+                  <p className="text-sm text-gray-600">Catatan</p>
+                  <p className="text-base">{selectedOrder.notes}</p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-gray-600">Subtotal</p>
+                  <p className="font-medium">Rp {parseInt(selectedOrder.rawOrder?.subtotal || 0).toLocaleString('id-ID')}</p>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm text-gray-600">Biaya Pengantaran</p>
+                  <p className="font-medium">Rp {parseInt(selectedOrder.rawOrder?.deliveryFee || 0).toLocaleString('id-ID')}</p>
+                </div>
+                <div className="flex justify-between items-center text-lg font-bold">
+                  <p>Total</p>
+                  <p className="text-[#E00000]">{selectedOrder.amount}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Status Modal */}
+      {showStatusModal && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Update Status Order</h2>
+            <p className="text-sm text-gray-600 mb-4">Order: {selectedOrder.orderId}</p>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status Baru</label>
+              <select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
+              >
+                <option value="pending">Pending</option>
+                <option value="preparing">Preparing</option>
+                <option value="delivering">Delivering</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowStatusModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmStatusUpdate}
+                className="px-4 py-2 bg-[#E00000] text-white rounded-lg hover:bg-[#B70000] transition-colors"
+              >
+                Update Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

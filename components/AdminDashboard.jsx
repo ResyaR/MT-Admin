@@ -6,6 +6,7 @@ import RecentOrders from "./RecentOrders";
 import RecentUsers from "./RecentUsers";
 import RevenueChart from "./RevenueChart";
 import AdminAPI from "@/lib/adminApi";
+import RestaurantAPI from "@/lib/restaurantApi";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState([
@@ -53,10 +54,10 @@ export default function AdminDashboard() {
     try {
       setIsLoading(true);
       
-      // Fetch users, deliveries, cities, and provinces from API
-      const [usersData, deliveries, cities, provinces] = await Promise.all([
+      // Fetch users, food orders, cities, and provinces from API
+      const [usersData, foodOrders, cities, provinces] = await Promise.all([
         AdminAPI.getAllUsers().catch(() => []),
-        AdminAPI.getAllDeliveries().catch(() => []),
+        RestaurantAPI.getAllOrders().catch(() => []),
         AdminAPI.getCities().catch(() => []),
         AdminAPI.getProvinces().catch(() => [])
       ]);
@@ -64,9 +65,9 @@ export default function AdminDashboard() {
       // Save users to state for chart
       setUsers(usersData);
 
-      // Calculate total revenue from deliveries
-      const totalRevenue = deliveries.reduce((sum, delivery) => {
-        return sum + (delivery.totalCost || delivery.price || 0);
+      // Calculate total revenue from food orders
+      const totalRevenue = foodOrders.reduce((sum, order) => {
+        return sum + (parseFloat(order.total) || 0);
       }, 0);
 
       // Calculate stats from real data
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
         {
           title: "Total Penghasilan",
           value: `Rp ${totalRevenue.toLocaleString('id-ID')}`,
-          change: deliveries.length > 0 ? `${deliveries.length} orders` : "No orders yet",
+          change: foodOrders.length > 0 ? `${foodOrders.length} orders` : "No orders yet",
           changeType: "increase",
           icon: "payments",
           color: "bg-green-500"
