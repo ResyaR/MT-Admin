@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShippingManagerAuth } from '@/lib/shippingManagerAuth';
-import ShippingManagerOrderAPI from '@/lib/shippingManagerOrderApi';
+import ShippingManagerDeliveryAPI from '@/lib/shippingManagerDeliveryApi';
 
 export default function ShippingManagerDashboard() {
   const router = useRouter();
@@ -31,13 +31,13 @@ export default function ShippingManagerDashboard() {
 
   const loadStats = async (managerData) => {
     try {
-      const orders = await ShippingManagerOrderAPI.getOrdersByZone(managerData.zone);
+      const deliveries = await ShippingManagerDeliveryAPI.getDeliveriesByZone(managerData.zone);
       const statsData = {
-        total: orders.length,
-        pending: orders.filter(o => o.status === 'pending').length,
-        preparing: orders.filter(o => o.status === 'preparing').length,
-        delivering: orders.filter(o => o.status === 'delivering').length,
-        delivered: orders.filter(o => o.status === 'delivered').length,
+        total: deliveries.length,
+        pending: deliveries.filter(d => d.status === 'pending').length,
+        preparing: deliveries.filter(d => d.status === 'accepted' || d.status === 'picked_up').length,
+        delivering: deliveries.filter(d => d.status === 'in_transit').length,
+        delivered: deliveries.filter(d => d.status === 'delivered').length,
       };
       setStats(statsData);
     } catch (err) {
@@ -77,11 +77,11 @@ export default function ShippingManagerDashboard() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Orders</p>
+                <p className="text-sm text-gray-600 mb-1">Total Pengiriman</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               </div>
               <span className="material-symbols-outlined text-4xl text-blue-500">
-                shopping_bag
+                local_shipping
               </span>
             </div>
           </div>
@@ -101,11 +101,11 @@ export default function ShippingManagerDashboard() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Preparing</p>
+                <p className="text-sm text-gray-600 mb-1">Diproses</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.preparing}</p>
               </div>
               <span className="material-symbols-outlined text-4xl text-blue-500">
-                restaurant
+                inventory_2
               </span>
             </div>
           </div>
@@ -113,7 +113,7 @@ export default function ShippingManagerDashboard() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Delivering</p>
+                <p className="text-sm text-gray-600 mb-1">Dalam Perjalanan</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.delivering}</p>
               </div>
               <span className="material-symbols-outlined text-4xl text-purple-500">
@@ -125,7 +125,7 @@ export default function ShippingManagerDashboard() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Delivered</p>
+                <p className="text-sm text-gray-600 mb-1">Terkirim</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.delivered}</p>
               </div>
               <span className="material-symbols-outlined text-4xl text-green-500">
