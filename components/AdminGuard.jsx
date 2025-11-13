@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import AdminAPI from "@/lib/adminApi";
+import { ShippingManagerAuth } from "@/lib/shippingManagerAuth";
 
 export default function AdminGuard({ children }) {
   const router = useRouter();
@@ -16,13 +17,25 @@ export default function AdminGuard({ children }) {
       return;
     }
 
-    // Check if admin is authenticated
-    const isAuthenticated = AdminAPI.isAuthenticated();
+    // Check if it's shipping manager route
+    const isShippingManagerRoute = pathname?.startsWith('/shipping-manager');
     
-    if (!isAuthenticated) {
-      router.push('/login');
+    if (isShippingManagerRoute) {
+      // Check shipping manager authentication
+      const isAuthenticated = ShippingManagerAuth.isAuthenticated();
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        setIsChecking(false);
+      }
     } else {
-      setIsChecking(false);
+      // Check admin authentication
+      const isAuthenticated = AdminAPI.isAuthenticated();
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        setIsChecking(false);
+      }
     }
   }, [pathname, router]);
 

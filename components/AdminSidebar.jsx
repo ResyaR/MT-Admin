@@ -42,6 +42,12 @@ export default function AdminSidebar() {
       active: pathname === "/deliveries"
     },
     {
+      icon: "local_shipping",
+      label: "Shipping Managers",
+      href: "/shipping-managers",
+      active: pathname === "/shipping-managers"
+    },
+    {
       icon: "analytics",
       label: "Analytics",
       href: "/analytics",

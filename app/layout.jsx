@@ -3,6 +3,7 @@
 import React from "react";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminHeader from "@/components/AdminHeader";
+import ShippingManagerSidebar from "@/components/ShippingManagerSidebar";
 import AdminGuard from "@/components/AdminGuard";
 import { usePathname } from "next/navigation";
 import "./globals.css";
@@ -10,6 +11,7 @@ import "./globals.css";
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const isLoginPage = pathname === '/login';
+  const isShippingManagerRoute = pathname?.startsWith('/shipping-manager');
 
   // If it's login page, render without sidebar/header
   if (isLoginPage) {
@@ -50,18 +52,34 @@ export default function RootLayout({ children }) {
       </head>
       <body className="bg-white min-h-screen">
         <AdminGuard>
-          <div className="flex h-screen bg-gray-100">
-            {/* Sidebar */}
-            <AdminSidebar />
-            
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <AdminHeader />
-              <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-                {children}
-              </main>
+          {isShippingManagerRoute ? (
+            // Shipping manager routes - with sidebar
+            <div className="flex h-screen bg-gray-100">
+              {/* Sidebar */}
+              <ShippingManagerSidebar />
+              
+              {/* Main Content */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
+          ) : (
+            // Admin routes - with sidebar/header
+            <div className="flex h-screen bg-gray-100">
+              {/* Sidebar */}
+              <AdminSidebar />
+              
+              {/* Main Content */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <AdminHeader />
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+                  {children}
+                </main>
+              </div>
+            </div>
+          )}
         </AdminGuard>
       </body>
     </html>
