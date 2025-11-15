@@ -85,6 +85,22 @@ class ShippingManagerOrderAPI {
     const data = await response.json();
     return data.data || data;
   }
+
+  async updateStatus(orderId: number, status: string): Promise<Order> {
+    const response = await fetch(`${API_BASE_URL}/orders/shipping-manager/${orderId}/status`, {
+      method: 'PATCH',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to update order status');
+    }
+
+    const data = await response.json();
+    return data.data || data;
+  }
 }
 
 export default new ShippingManagerOrderAPI();
