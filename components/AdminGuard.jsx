@@ -17,8 +17,10 @@ export default function AdminGuard({ children }) {
       return;
     }
 
-    // Check if it's shipping manager route
-    const isShippingManagerRoute = pathname?.startsWith('/shipping-manager');
+    // Check if it's shipping manager route (singular, not plural)
+    // /shipping-manager/* = shipping manager routes
+    // /shipping-managers = admin route (plural)
+    const isShippingManagerRoute = pathname?.startsWith('/shipping-manager/') || pathname === '/shipping-manager';
     
     if (isShippingManagerRoute) {
       // Check shipping manager authentication
@@ -29,7 +31,7 @@ export default function AdminGuard({ children }) {
         setIsChecking(false);
       }
     } else {
-      // Check admin authentication
+      // Check admin authentication (for all other routes including /shipping-managers)
       const isAuthenticated = AdminAPI.isAuthenticated();
       if (!isAuthenticated) {
         router.push('/login');
