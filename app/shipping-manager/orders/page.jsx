@@ -28,14 +28,20 @@ export default function ShippingManagerOrdersPage() {
       setError('');
       const manager = ShippingManagerAuth.getManagerData();
       
+      if (!manager || !manager.zone) {
+        throw new Error('Manager data tidak ditemukan');
+      }
+      
       // Get orders by zone
       const data = await ShippingManagerOrderAPI.getOrdersByZone(
         manager.zone,
         statusFilter || undefined
       );
-      setOrders(data);
-    } catch (err) {
+      setOrders(data || []);
+    } catch (err: any) {
+      console.error('Error loading orders:', err);
       setError(err?.message || 'Gagal memuat order');
+      setOrders([]);
     } finally {
       setLoading(false);
     }

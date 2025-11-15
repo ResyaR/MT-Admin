@@ -40,8 +40,16 @@ export default function ShippingManagerDashboard() {
         delivered: deliveries.filter(d => d.status === 'delivered').length,
       };
       setStats(statsData);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error loading stats:', err);
+      // Set default stats on error
+      setStats({
+        total: 0,
+        pending: 0,
+        preparing: 0,
+        delivering: 0,
+        delivered: 0,
+      });
     }
   };
 

@@ -42,64 +42,93 @@ export interface OrderItem {
 class ShippingManagerOrderAPI {
   private getHeaders() {
     const token = ShippingManagerAuth.getToken();
+    if (!token) {
+      throw new Error('Shipping manager not authenticated');
+    }
     return {
       'Content-Type': 'application/json',
-      'shipping-manager-token': token || '',
+      'shipping-manager-token': token,
     };
   }
 
   async getOrdersByZone(zone: number, status?: string): Promise<Order[]> {
-    const url = new URL(`${API_BASE_URL}/orders/shipping-manager/zone/${zone}`);
-    if (status) {
-      url.searchParams.append('status', status);
+    try {
+      const url = new URL(`${API_BASE_URL}/orders/shipping-manager/zone/${zone}`);
+      if (status) {
+        url.searchParams.append('status', status);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to fetch orders: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data.data || [];
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(`Network error: ${error.message || 'Failed to fetch orders'}`);
     }
-
-    const response = await fetch(url.toString(), {
-      headers: this.getHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to fetch orders');
-    }
-
-    const data = await response.json();
-    return data.data || data;
   }
 
   async getMyOrders(status?: string): Promise<Order[]> {
-    const url = new URL(`${API_BASE_URL}/orders/shipping-manager/my-orders`);
-    if (status) {
-      url.searchParams.append('status', status);
+    try {
+      const url = new URL(`${API_BASE_URL}/orders/shipping-manager/my-orders`);
+      if (status) {
+        url.searchParams.append('status', status);
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to fetch orders: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data.data || [];
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(`Network error: ${error.message || 'Failed to fetch orders'}`);
     }
-
-    const response = await fetch(url.toString(), {
-      headers: this.getHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to fetch orders');
-    }
-
-    const data = await response.json();
-    return data.data || data;
   }
 
   async updateStatus(orderId: number, status: string): Promise<Order> {
-    const response = await fetch(`${API_BASE_URL}/orders/shipping-manager/${orderId}/status`, {
-      method: 'PATCH',
-      headers: this.getHeaders(),
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/orders/shipping-manager/${orderId}/status`, {
+        method: 'PATCH',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ status }),
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to update order status');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to update order status: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data.data || data;
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(`Network error: ${error.message || 'Failed to update order status'}`);
     }
-
-    const data = await response.json();
-    return data.data || data;
   }
 }
 

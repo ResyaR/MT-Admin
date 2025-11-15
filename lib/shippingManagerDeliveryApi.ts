@@ -50,39 +50,57 @@ class ShippingManagerDeliveryAPI {
   }
 
   async getDeliveriesByZone(zone: number, status?: string): Promise<Delivery[]> {
-    const url = new URL(`${API_BASE_URL}/delivery/shipping-manager/zone/${zone}`);
-    if (status) {
-      url.searchParams.append('status', status);
-    }
-    const response = await fetch(url.toString(), {
-      headers: this.getHeaders(),
-    });
+    try {
+      const url = new URL(`${API_BASE_URL}/delivery/shipping-manager/zone/${zone}`);
+      if (status) {
+        url.searchParams.append('status', status);
+      }
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to fetch deliveries by zone');
-    }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to fetch deliveries: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
 
-    const data = await response.json();
-    return data.data || data;
+      const data = await response.json();
+      return data.data || [];
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(`Network error: ${error.message || 'Failed to fetch deliveries by zone'}`);
+    }
   }
 
   async getMyDeliveries(status?: string): Promise<Delivery[]> {
-    const url = new URL(`${API_BASE_URL}/delivery/shipping-manager/my-deliveries`);
-    if (status) {
-      url.searchParams.append('status', status);
-    }
-    const response = await fetch(url.toString(), {
-      headers: this.getHeaders(),
-    });
+    try {
+      const url = new URL(`${API_BASE_URL}/delivery/shipping-manager/my-deliveries`);
+      if (status) {
+        url.searchParams.append('status', status);
+      }
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Failed to fetch my deliveries');
-    }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to fetch deliveries: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
 
-    const data = await response.json();
-    return data.data || data;
+      const data = await response.json();
+      return data.data || [];
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(`Network error: ${error.message || 'Failed to fetch my deliveries'}`);
+    }
   }
 }
 
