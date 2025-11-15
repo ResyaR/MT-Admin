@@ -11,7 +11,9 @@ import "./globals.css";
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const isLoginPage = pathname === '/login';
-  const isShippingManagerRoute = pathname?.startsWith('/shipping-manager');
+  // /shipping-manager/* = shipping manager routes (singular)
+  // /shipping-managers = admin route (plural)
+  const isShippingManagerRoute = pathname?.startsWith('/shipping-manager/') || pathname === '/shipping-manager';
 
   // If it's login page, render without sidebar/header
   if (isLoginPage) {

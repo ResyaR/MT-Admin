@@ -42,6 +42,14 @@ export default function ShippingManagerDashboard() {
       setStats(statsData);
     } catch (err) {
       console.error('Error loading stats:', err);
+      // Set default stats on error
+      setStats({
+        total: 0,
+        pending: 0,
+        preparing: 0,
+        delivering: 0,
+        delivered: 0,
+      });
     }
   };
 

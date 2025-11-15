@@ -27,14 +27,26 @@ export default function ShippingManagerOrdersPage() {
       setError('');
       const manager = ShippingManagerAuth.getManagerData();
       
+      console.log('[OrdersPage] Loading deliveries for manager:', manager);
+      
+      if (!manager || !manager.zone) {
+        throw new Error('Manager data tidak ditemukan');
+      }
+      
+      console.log(`[OrdersPage] Fetching deliveries for zone ${manager.zone}${statusFilter ? ` with status ${statusFilter}` : ''}`);
+      
       // Get deliveries by zone
       const data = await ShippingManagerDeliveryAPI.getDeliveriesByZone(
         manager.zone,
         statusFilter || undefined
       );
-      setOrders(data);
+      
+      console.log(`[OrdersPage] Received ${data?.length || 0} deliveries:`, data);
+      setOrders(data || []);
     } catch (err) {
+      console.error('[OrdersPage] Error loading deliveries:', err);
       setError(err?.message || 'Gagal memuat pengiriman');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -200,4 +212,3 @@ export default function ShippingManagerOrdersPage() {
     </div>
   );
 }
-
