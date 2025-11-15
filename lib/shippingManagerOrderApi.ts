@@ -80,12 +80,12 @@ class ShippingManagerOrderAPI {
       console.log(`[ShippingManagerOrderAPI] Orders count: ${data.data?.length || 0}`);
       
       return data.data || [];
-    } catch (error: any) {
+    } catch (error) {
       console.error(`[ShippingManagerOrderAPI] Error:`, error);
-      if (error.message) {
+      if (error?.message) {
         throw error;
       }
-      throw new Error(`Network error: ${error.message || 'Failed to fetch orders'}`);
+      throw new Error(`Network error: ${error?.message || 'Failed to fetch orders'}`);
     }
   }
 
@@ -109,11 +109,11 @@ class ShippingManagerOrderAPI {
 
       const data = await response.json();
       return data.data || [];
-    } catch (error: any) {
-      if (error.message) {
+    } catch (error) {
+      if (error?.message) {
         throw error;
       }
-      throw new Error(`Network error: ${error.message || 'Failed to fetch orders'}`);
+      throw new Error(`Network error: ${error?.message || 'Failed to fetch orders'}`);
     }
   }
 
@@ -133,11 +133,11 @@ class ShippingManagerOrderAPI {
 
       const data = await response.json();
       return data.data || data;
-    } catch (error: any) {
-      if (error.message) {
+    } catch (error) {
+      if (error?.message) {
         throw error;
       }
-      throw new Error(`Network error: ${error.message || 'Failed to update order status'}`);
+      throw new Error(`Network error: ${error?.message || 'Failed to update order status'}`);
     }
   }
 }
