@@ -40,7 +40,7 @@ export default function ShippingManagerDashboard() {
         delivered: deliveries.filter(d => d.status === 'delivered').length,
       };
       setStats(statsData);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error loading stats:', err);
       // Set default stats on error
       setStats({

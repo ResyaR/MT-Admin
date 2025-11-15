@@ -38,7 +38,7 @@ export default function ShippingManagerOrdersPage() {
         statusFilter || undefined
       );
       setOrders(data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error loading orders:', err);
       setError(err?.message || 'Gagal memuat order');
       setOrders([]);
