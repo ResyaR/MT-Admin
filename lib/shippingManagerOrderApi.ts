@@ -58,20 +58,30 @@ class ShippingManagerOrderAPI {
         url.searchParams.append('status', status);
       }
 
+      console.log(`[ShippingManagerOrderAPI] Fetching orders from: ${url.toString()}`);
+      console.log(`[ShippingManagerOrderAPI] Headers:`, this.getHeaders());
+
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: this.getHeaders(),
       });
 
+      console.log(`[ShippingManagerOrderAPI] Response status: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error(`[ShippingManagerOrderAPI] Error response:`, errorData);
         const errorMessage = errorData.message || `Failed to fetch orders: ${response.status} ${response.statusText}`;
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log(`[ShippingManagerOrderAPI] Response data:`, data);
+      console.log(`[ShippingManagerOrderAPI] Orders count: ${data.data?.length || 0}`);
+      
       return data.data || [];
     } catch (error: any) {
+      console.error(`[ShippingManagerOrderAPI] Error:`, error);
       if (error.message) {
         throw error;
       }
