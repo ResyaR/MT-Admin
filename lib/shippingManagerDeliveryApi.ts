@@ -11,6 +11,7 @@ export interface Delivery {
   status: string;
   deliveryZone?: number;
   shippingManagerId?: number;
+  resiCode?: string;
   scheduledDate?: string;
   scheduleTimeSlot?: string;
   barang?: {
@@ -100,6 +101,30 @@ class ShippingManagerDeliveryAPI {
         throw error;
       }
       throw new Error(`Network error: ${error.message || 'Failed to fetch my deliveries'}`);
+    }
+  }
+
+  async updateStatus(deliveryId: number, status: string): Promise<Delivery> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/delivery/shipping-manager/${deliveryId}/update-status`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || `Failed to update status: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data.data || data;
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(`Network error: ${error.message || 'Failed to update status'}`);
     }
   }
 }

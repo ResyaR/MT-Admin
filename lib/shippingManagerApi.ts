@@ -19,6 +19,7 @@ export interface CreateShippingManagerDto {
   email: string;
   phone: string;
   zone: number;
+  token?: string;
 }
 
 export interface CreateShippingManagerWithUserDto {
@@ -35,6 +36,7 @@ export interface UpdateShippingManagerDto {
   phone?: string;
   zone?: number;
   isActive?: boolean;
+  token?: string;
 }
 
 class ShippingManagerAPI {

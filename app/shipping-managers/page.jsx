@@ -16,6 +16,7 @@ export default function ShippingManagersPage() {
     email: '',
     phone: '',
     zone: 1,
+    token: '',
   });
   const [regeneratingToken, setRegeneratingToken] = useState(null);
   const [copiedTokenId, setCopiedTokenId] = useState(null);
@@ -52,15 +53,25 @@ export default function ShippingManagersPage() {
       setError('');
 
       if (editingId) {
-        await ShippingManagerAPI.update(editingId, formData);
+        // For update, send token only if it's changed (not empty)
+        const updateData = { ...formData };
+        if (!updateData.token || !updateData.token.trim()) {
+          // If token is empty, don't send it (keep current token)
+          delete updateData.token;
+        }
+        await ShippingManagerAPI.update(editingId, updateData);
       } else {
-        // Token akan dibuat otomatis di backend
-        await ShippingManagerAPI.create(formData);
+        // Kirim token hanya jika diisi, jika kosong akan auto-generate di backend
+        const createData = { ...formData };
+        if (!createData.token || !createData.token.trim()) {
+          delete createData.token;
+        }
+        await ShippingManagerAPI.create(createData);
       }
       await loadManagers();
       setShowAddForm(false);
       setEditingId(null);
-      setFormData({ name: '', email: '', phone: '', zone: 1 });
+      setFormData({ name: '', email: '', phone: '', zone: 1, token: '' });
     } catch (err) {
       setError(err?.message || 'Gagal menyimpan shipping manager');
     }
@@ -72,6 +83,7 @@ export default function ShippingManagersPage() {
       email: manager.email,
       phone: manager.phone,
       zone: manager.zone,
+      token: manager.token || '', // Include current token for editing
     });
     setEditingId(manager.id);
     setShowAddForm(true);
@@ -164,7 +176,7 @@ export default function ShippingManagersPage() {
             onClick={() => {
               setShowAddForm(true);
               setEditingId(null);
-              setFormData({ name: '', email: '', phone: '', zone: 1 });
+              setFormData({ name: '', email: '', phone: '', zone: 1, token: '' });
             }}
             className="bg-[#E00000] text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
           >
@@ -246,6 +258,25 @@ export default function ShippingManagersPage() {
                     <option value={5}>Zona 5</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Token Login {editingId ? '' : '(Opsional)'}
+                  </label>
+                  <input
+                    type="text"
+                    name="token"
+                    value={formData.token}
+                    onChange={handleInputChange}
+                    placeholder={editingId ? "Kosongkan untuk tetap menggunakan token saat ini" : "Kosongkan untuk auto-generate"}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000] font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    {editingId 
+                      ? "Kosongkan untuk tetap menggunakan token saat ini, atau masukkan token baru. Token harus unik."
+                      : "Jika dikosongkan, token akan dibuat otomatis. Token harus unik."}
+                  </p>
+                </div>
               </div>
 
               <div className="flex gap-3">
@@ -260,7 +291,7 @@ export default function ShippingManagersPage() {
                   onClick={() => {
                     setShowAddForm(false);
                     setEditingId(null);
-                    setFormData({ name: '', email: '', phone: '', zone: 1 });
+                    setFormData({ name: '', email: '', phone: '', zone: 1, token: '' });
                   }}
                   className="px-6 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
                 >
@@ -268,14 +299,13 @@ export default function ShippingManagersPage() {
                 </button>
               </div>
 
-              {!editingId && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Info:</strong> Token login akan dibuat otomatis setelah shipping manager dibuat. 
-                    Shipping manager dapat login di MT Panel menggunakan token tersebut.
-                  </p>
-                </div>
-              )}
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Info:</strong> {editingId 
+                    ? "Anda dapat mengubah token dengan memasukkan token baru, atau mengosongkannya untuk tetap menggunakan token saat ini. Token harus unik."
+                    : "Anda dapat memasukkan token custom atau mengosongkannya untuk auto-generate. Token harus unik dan digunakan untuk login di MT Panel."}
+                </p>
+              </div>
             </form>
           </div>
         )}
