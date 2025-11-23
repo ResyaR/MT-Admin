@@ -10,6 +10,7 @@ export default function UsersTable() {
   const [allUsers, setAllUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -29,9 +30,13 @@ export default function UsersTable() {
     loadUsers();
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = async (showRefreshing = false) => {
     try {
-      setIsLoading(true);
+      if (showRefreshing) {
+        setRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       const users = await AdminAPI.getAllUsers();
       
       // Transform API data to match our table format
@@ -55,7 +60,12 @@ export default function UsersTable() {
       console.error('Error loading users:', error);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    loadUsers(true);
   };
 
   // View user detail
@@ -294,11 +304,22 @@ export default function UsersTable() {
             onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000]"
           >
+            <option value={5}>5 per page</option>
             <option value={10}>10 per page</option>
             <option value={25}>25 per page</option>
             <option value={50}>50 per page</option>
             <option value={100}>100 per page</option>
           </select>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || isLoading}
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh data"
+          >
+            <span className={`material-symbols-outlined text-lg ${refreshing ? 'animate-spin' : ''}`}>
+              refresh
+            </span>
+          </button>
         </div>
       </div>
 

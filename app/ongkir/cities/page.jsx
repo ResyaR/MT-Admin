@@ -16,11 +16,15 @@ export default function CitiesPage() {
     province: '',
     name: '',
     type: 'Kota',
-    postalCode: ''
+    postalCode: '',
+    zone: ''
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isNewProvince, setIsNewProvince] = useState(false);
   const [customProvince, setCustomProvince] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [cityToDelete, setCityToDelete] = useState(null);
 
   // Pagination & Filter states
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,7 +88,8 @@ export default function CitiesPage() {
       province: '',
       name: '',
       type: 'Kota',
-      postalCode: ''
+      postalCode: '',
+      zone: ''
     });
     setIsNewProvince(false);
     setCustomProvince('');
@@ -98,7 +103,8 @@ export default function CitiesPage() {
       province: city.province || '',
       name: city.name || '',
       type: city.type || 'Kota',
-      postalCode: city.postalCode || ''
+      postalCode: city.postalCode || '',
+      zone: city.zone ? String(city.zone) : ''
     });
     setIsNewProvince(false);
     setCustomProvince('');
@@ -124,27 +130,53 @@ export default function CitiesPage() {
       
       setShowModal(false);
       loadData();
-      alert(modalMode === 'add' ? 'Kota berhasil ditambahkan!' : 'Kota berhasil diupdate!');
+      setToast({
+        show: true,
+        message: modalMode === 'add' ? 'Kota berhasil ditambahkan!' : 'Kota berhasil diupdate!',
+        type: 'success'
+      });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     } catch (error) {
       console.error('Error saving city:', error);
-      alert('Gagal menyimpan kota: ' + error.message);
+      setToast({
+        show: true,
+        message: 'Gagal menyimpan kota: ' + error.message,
+        type: 'error'
+      });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (cityId) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus kota ini?')) {
-      return;
-    }
+    setCityToDelete(cityId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!cityToDelete) return;
 
     try {
-      await AdminAPI.deleteCity(cityId);
+      await AdminAPI.deleteCity(cityToDelete);
       loadData();
-      alert('Kota berhasil dihapus!');
+      setToast({
+        show: true,
+        message: 'Kota berhasil dihapus!',
+        type: 'success'
+      });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     } catch (error) {
       console.error('Error deleting city:', error);
-      alert('Gagal menghapus kota: ' + error.message);
+      setToast({
+        show: true,
+        message: 'Gagal menghapus kota: ' + error.message,
+        type: 'error'
+      });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+    } finally {
+      setShowDeleteConfirm(false);
+      setCityToDelete(null);
     }
   };
 
@@ -540,21 +572,26 @@ export default function CitiesPage() {
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-blue-600 text-sm mt-0.5">info</span>
-                  <div>
-                    <p className="text-xs font-semibold text-blue-900 mb-1">Info Zona Tarif</p>
-                    <p className="text-xs text-blue-800">
-                      Zona akan otomatis di-assign berdasarkan provinsi yang dipilih:
-                      <br/>• Zona 1: Jawa & Bali
-                      <br/>• Zona 2: Sumatera
-                      <br/>• Zona 3: Kalimantan
-                      <br/>• Zona 4: Sulawesi & Nusa Tenggara
-                      <br/>• Zona 5: Maluku & Papua
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Zona <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.zone}
+                  onChange={(e) => setFormData({...formData, zone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#E00000] focus:border-transparent"
+                  required
+                >
+                  <option value="">Pilih Zona</option>
+                  <option value="1">Zona 1</option>
+                  <option value="2">Zona 2</option>
+                  <option value="3">Zona 3</option>
+                  <option value="4">Zona 4</option>
+                  <option value="5">Zona 5</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Pilih zona tarif pengiriman untuk kota ini (1-5)
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -575,6 +612,55 @@ export default function CitiesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 ${
+          toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          <span className="material-symbols-outlined">
+            {toast.type === 'success' ? 'check_circle' : 'error'}
+          </span>
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast({ show: false, message: '', type: 'success' })}
+            className="ml-2 hover:opacity-70"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Konfirmasi Hapus</h2>
+              <p className="text-gray-600 mb-6">
+                Apakah Anda yakin ingin menghapus kota ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setCityToDelete(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

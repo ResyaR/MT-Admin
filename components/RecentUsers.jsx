@@ -18,19 +18,19 @@ export default function RecentUsers() {
       setIsLoading(true);
       const allUsers = await AdminAPI.getAllUsers();
       
-      // Sort by lastLogin and take top 5
+      // Sort by createdAt (latest first) and take top 5
       const recentUsers = allUsers
         .sort((a, b) => {
-          const dateA = new Date(a.lastLogin || 0);
-          const dateB = new Date(b.lastLogin || 0);
-          return dateB - dateA;
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA; // Latest first
         })
         .slice(0, 5)
         .map(user => ({
-          name: user.fullName || "Not set",
+          name: user.fullName || user.username || user.email?.split('@')[0] || "Not set",
           email: user.email,
           avatar: user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjgwIiBmaWxsPSIjZTVlN2U5Ii8+PHN2ZyB4PSI1MCIgeT0iNTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiM5Y2EzYWYiPjxwYXRoIGQ9Ik0xMiAxMmMyLjIxIDAgNC0xLjc5IDQtNHMtMS43OS00LTQtNC00IDEuNzktNCA0IDEuNzkgNCA0IDR6bTAgMmMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHoiLz48L3N2Zz48L3N2Zz4=',
-          joinedDate: user.lastLogin ? getRelativeTime(new Date(user.lastLogin)) : "Never",
+          joinedDate: user.createdAt ? getRelativeTime(new Date(user.createdAt)) : "Unknown",
           orders: 0,
           status: user.lastLogin ? "active" : "new"
         }));
@@ -38,6 +38,7 @@ export default function RecentUsers() {
       setUsers(recentUsers);
     } catch (error) {
       console.error('Error loading recent users:', error);
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
@@ -133,6 +134,11 @@ export default function RecentUsers() {
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E00000] mx-auto"></div>
         </div>
+      ) : users.length === 0 ? (
+        <div className="text-center py-12">
+          <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">people</span>
+          <p className="text-gray-600">Belum ada users</p>
+        </div>
       ) : (
         <div className="space-y-4">
         {users.map((user, index) => (
@@ -144,6 +150,10 @@ export default function RecentUsers() {
               src={user.avatar}
               alt={user.name}
               className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjgwIiBmaWxsPSIjZTVlN2U5Ii8+PHN2ZyB4PSI1MCIgeT0iNTAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiM5Y2EzYWYiPjxwYXRoIGQ9Ik0xMiAxMmMyLjIxIDAgNC0xLjc5IDQtNHMtMS43OS00LTQtNC00IDEuNzktNCA0IDEuNzkgNCA0IDR6bTAgMmMtMi42NyAwLTggMS4zNC04IDR2MmgxNnYtMmMwLTIuNjYtNS4zMy00LTgtNHoiLz48L3N2Zz48L3N2Zz4=';
+              }}
             />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">

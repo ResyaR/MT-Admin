@@ -123,16 +123,21 @@ export default function DeliveriesTable() {
 
   return (
     <div className="space-y-6">
-      {/* Live Map Placeholder */}
+      {/* Live Map */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Live Delivery Tracking</h2>
-        <div className="w-full h-96 bg-gray-200 rounded-lg flex items-center justify-center">
-          <div className="text-center">
-            <span className="material-symbols-outlined text-6xl text-gray-400 mb-2">map</span>
-            <p className="text-gray-500">Live Map View</p>
-            <p className="text-sm text-gray-400">Integrate with Google Maps API</p>
-          </div>
+        <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-200">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.8195613502864!3d-6.194981395493371!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3e945e34b9d%3A0x5371bf0fdad786a2!2sJakarta!5e0!3m2!1sen!2sid!4v1234567890123!5m2!1sen!2sid"
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen={true}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
+        <p className="text-xs text-gray-500 mt-2">Peta interaktif - dapat di-zoom dan di-pan</p>
       </div>
 
       {/* Deliveries Table */}

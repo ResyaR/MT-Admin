@@ -562,7 +562,8 @@ export class AdminAPI {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create city');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create city');
       }
 
       return await response.json();

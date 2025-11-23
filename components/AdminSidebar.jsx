@@ -9,6 +9,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [ongkirOpen, setOngkirOpen] = useState(pathname.startsWith('/ongkir'));
+  const [deliveriesOpen, setDeliveriesOpen] = useState(pathname.startsWith('/deliveries'));
 
   const menuItems = [
     {
@@ -34,12 +35,6 @@ export default function AdminSidebar() {
       label: "Restaurants",
       href: "/restaurants",
       active: pathname === "/restaurants"
-    },
-    {
-      icon: "delivery_dining",
-      label: "Deliveries",
-      href: "/deliveries",
-      active: pathname === "/deliveries"
     },
     {
       icon: "local_shipping",
@@ -85,6 +80,21 @@ export default function AdminSidebar() {
       label: "Cek Ongkir",
       href: "/ongkir/calculator",
       active: pathname === "/ongkir/calculator"
+    }
+  ];
+
+  const deliveriesSubmenu = [
+    {
+      icon: "restaurant",
+      label: "Food Delivery",
+      href: "/deliveries/food",
+      active: pathname === "/deliveries/food" || pathname === "/deliveries"
+    },
+    {
+      icon: "local_shipping",
+      label: "Delivery Services",
+      href: "/deliveries/services",
+      active: pathname === "/deliveries/services"
     }
   ];
 
@@ -139,6 +149,56 @@ export default function AdminSidebar() {
               <span>{item.label}</span>
             </button>
           ))}
+
+          {/* Deliveries Dropdown Menu */}
+          <div className="space-y-1">
+            <button
+              onClick={() => setDeliveriesOpen(!deliveriesOpen)}
+              className={`
+                w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg
+                text-sm font-medium transition-all duration-200
+                ${pathname.startsWith('/deliveries')
+                  ? 'bg-[#E00000] text-white shadow-md' 
+                  : 'text-gray-700 hover:bg-gray-100'
+                }
+              `}
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-xl">
+                  delivery_dining
+                </span>
+                <span>Deliveries</span>
+              </div>
+              <span className={`material-symbols-outlined text-lg transition-transform ${deliveriesOpen ? 'rotate-180' : ''}`}>
+                expand_more
+              </span>
+            </button>
+
+            {/* Submenu */}
+            {deliveriesOpen && (
+              <div className="ml-4 space-y-1 pl-4 border-l-2 border-gray-200">
+                {deliveriesSubmenu.map((item) => (
+                  <button
+                    key={item.href}
+                    onClick={() => router.push(item.href)}
+                    className={`
+                      w-full flex items-center gap-3 px-4 py-2 rounded-lg
+                      text-sm font-medium transition-all duration-200
+                      ${item.active
+                        ? 'bg-[#E00000]/10 text-[#E00000]'
+                        : 'text-gray-600 hover:bg-gray-100'
+                      }
+                    `}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {item.icon}
+                    </span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Ongkir Dropdown Menu */}
           <div className="space-y-1">

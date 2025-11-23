@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import AdminAPI from "@/lib/adminApi";
 
 export default function AdminHeader() {
   const user = null; // Admin tidak perlu user context
   const router = useRouter();
+  const pathname = usePathname();
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleLogout = () => {
@@ -14,21 +15,75 @@ export default function AdminHeader() {
     router.push('/login');
   };
 
+  // Get page title based on pathname
+  const getPageTitle = () => {
+    if (!pathname) return 'Admin Panel';
+    
+    const routes = {
+      '/': 'Dashboard',
+      '/users': 'Users Management',
+      '/orders': 'Orders Management',
+      '/deliveries': 'Food Delivery',
+      '/deliveries/food': 'Food Delivery',
+      '/deliveries/services': 'Delivery Services',
+      '/restaurants': 'Restaurants Management',
+      '/menu': 'Menu Management',
+      '/analytics': 'Analytics & Reports',
+      '/ongkir': 'Ongkir Management',
+      '/shipping-managers': 'Shipping Managers',
+      '/shipping-manager/orders': 'Shipping Manager Orders'
+    };
+
+    // Check for exact match first
+    if (routes[pathname]) {
+      return routes[pathname];
+    }
+
+    // Check for partial matches
+    for (const [route, title] of Object.entries(routes)) {
+      if (pathname.startsWith(route) && route !== '/') {
+        return title;
+      }
+    }
+
+    // Default title
+    return 'Admin Panel';
+  };
+
+  // Get breadcrumb path
+  const getBreadcrumb = () => {
+    if (!pathname) return ['Home'];
+    
+    const parts = pathname.split('/').filter(Boolean);
+    const breadcrumbs = ['Home'];
+    
+    parts.forEach((part, index) => {
+      const title = part
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      breadcrumbs.push(title);
+    });
+
+    return breadcrumbs;
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="flex items-center justify-between px-6 py-4">
-        {/* Search Bar */}
-        <div className="flex-1 max-w-2xl">
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              search
-            </span>
-            <input
-              type="text"
-              placeholder="Search users, orders, restaurants..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E00000] focus:border-transparent"
-            />
+        {/* Page Title & Breadcrumb */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+            {getBreadcrumb().map((crumb, index) => (
+              <span key={index} className="flex items-center gap-2">
+                {index > 0 && <span className="material-symbols-outlined text-xs">chevron_right</span>}
+                <span className={index === getBreadcrumb().length - 1 ? 'text-gray-900 font-semibold' : ''}>
+                  {crumb}
+                </span>
+              </span>
+            ))}
           </div>
+          <h1 className="text-xl font-bold text-gray-900">{getPageTitle()}</h1>
         </div>
 
         {/* Right Side */}
