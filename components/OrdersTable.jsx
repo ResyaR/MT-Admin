@@ -28,7 +28,7 @@ export default function OrdersTable() {
       // Transform food orders
       const transformedOrders = foodOrders.map(order => ({
         id: order.id,
-        orderId: `#FOOD-${String(order.id).padStart(4, '0')}`,
+        orderId: order.orderNumber || `#FOOD-${String(order.id).padStart(4, '0')}`,
         customer: order.user?.username || order.customerName || `User ${order.userId}`,
         restaurant: order.restaurant?.name || "Unknown Restaurant",
         items: order.items?.map(item => `${item.quantity}x ${item.menuName}`).join(', ') || "N/A",
@@ -375,7 +375,7 @@ export default function OrdersTable() {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Detail Order {selectedOrder.orderId}</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Detail Order {selectedOrder.rawOrder?.orderNumber || selectedOrder.orderId}</h2>
                 <button
                   onClick={() => setShowDetailModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg"
@@ -388,7 +388,7 @@ export default function OrdersTable() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Customer</p>
-                  <p className="text-base font-semibold">{selectedOrder.customer}</p>
+                  <p className="text-base font-semibold">{selectedOrder.rawOrder?.customerName || selectedOrder.customer}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Restaurant</p>
@@ -420,8 +420,29 @@ export default function OrdersTable() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-600">Alamat Pengantaran</p>
-                <p className="text-base">{selectedOrder.deliveryAddress}</p>
+                <p className="text-sm text-gray-600 mb-2">Alamat Pengantaran</p>
+                <div className="space-y-1">
+                  {selectedOrder.rawOrder?.customerName && (
+                    <p className="text-lg font-bold text-gray-900">{selectedOrder.rawOrder.customerName}</p>
+                  )}
+                  {selectedOrder.rawOrder?.deliveryAddressLabel && (
+                    <p className="text-base font-semibold text-gray-900">{selectedOrder.rawOrder.deliveryAddressLabel}</p>
+                  )}
+                  <p className="text-base text-gray-900">{selectedOrder.deliveryAddress}</p>
+                  {(selectedOrder.rawOrder?.deliveryCity || selectedOrder.rawOrder?.deliveryProvince) && (
+                    <p className="text-sm text-gray-600">
+                      {selectedOrder.rawOrder.deliveryCity}{selectedOrder.rawOrder.deliveryCity && selectedOrder.rawOrder.deliveryProvince ? ', ' : ''}{selectedOrder.rawOrder.deliveryProvince} {selectedOrder.rawOrder.deliveryPostalCode || ''}
+                    </p>
+                  )}
+                  {selectedOrder.rawOrder?.deliveryZone && (
+                    <p className="text-sm text-[#E00000] font-semibold">Zona {selectedOrder.rawOrder.deliveryZone}</p>
+                  )}
+                  {selectedOrder.rawOrder?.customerPhone && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      <span className="material-symbols-outlined text-sm align-middle">phone</span> {selectedOrder.rawOrder.customerPhone}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {selectedOrder.notes && (
@@ -432,17 +453,23 @@ export default function OrdersTable() {
               )}
 
               <div className="pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm text-gray-600">Subtotal</p>
-                  <p className="font-medium">Rp {parseInt(selectedOrder.rawOrder?.subtotal || 0).toLocaleString('id-ID')}</p>
-                </div>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm text-gray-600">Biaya Pengantaran</p>
-                  <p className="font-medium">Rp {parseInt(selectedOrder.rawOrder?.deliveryFee || 0).toLocaleString('id-ID')}</p>
-                </div>
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <p>Total</p>
-                  <p className="text-[#E00000]">{selectedOrder.amount}</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-600">Subtotal</p>
+                    <p className="font-medium">Rp {parseInt(selectedOrder.rawOrder?.subtotal || 0).toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-600">Biaya Aplikasi (10%)</p>
+                    <p className="font-medium">Rp {Math.round((parseInt(selectedOrder.rawOrder?.subtotal || 0) * 0.1)).toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-600">Biaya Pengantaran</p>
+                    <p className="font-medium">Rp {parseInt(selectedOrder.rawOrder?.deliveryFee || 0).toLocaleString('id-ID')}</p>
+                  </div>
+                  <div className="flex justify-between items-center text-lg font-bold pt-2 border-t border-gray-200">
+                    <p>Total</p>
+                    <p className="text-[#E00000]">{selectedOrder.amount}</p>
+                  </div>
                 </div>
               </div>
             </div>
